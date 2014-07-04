@@ -1,4 +1,4 @@
 script
 ======
 
-Usefull script written by myself.
+Usefull scripts.
