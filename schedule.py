@@ -178,7 +178,7 @@ class Schedule:
                 pmf = self.cmg.polyMoleFrac(float(dm["POLYMERMW"][0]), float(data[:,2][i+1]))
                 self.cmg.injector(float(data[:,1][i+1])/60, pmf, self.file)
             else:
-                self.file.write("\nEND\n\n")
+                self.file.write("\nSTOP\n\n")
 if __name__=='__main__':
     schedule=Schedule(args.filen, args.output)
     if args.type == "ecl" or args.type == "ECL":
