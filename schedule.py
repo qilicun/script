@@ -4,15 +4,17 @@
 #
 # Last modified:	2014-09-19 10:27
 #
-# Description: generate schedule file for eclipse 
+# Description: generate schedule file for eclipse and cmg 
 
 import numpy as np
 import re
 import argparse
+import os
 
 parser = argparse.ArgumentParser(description="Plot FPR for comparsion")
-parser.add_argument('-f', '--fn', help='Name of lab data files', default=None, required=True)
-parser.add_argument('-t', '--tn', help='Tyep of Simulator(ecl or cmg)', default="ecl", required=True)
+parser.add_argument('-f', '--filen', help='Name of lab data files', default=None, required=True)
+parser.add_argument('-t', '--type', help='Tyep of Simulator(ecl or cmg)', default="ecl", required=True)
+parser.add_argument('-o', '--output', help='Name of schedule', default="schedule.inc", required=False)
 args = parser.parse_args()
 
 class Ecl:
@@ -123,8 +125,10 @@ class Cmg:
         file.write("\t"+str(pos[0])+"  "+str(pos[1])+"  "+str(pos[2])+"  1.  OPEN  FLOW-TO  'SURFACE'   REFLAYER\n")
 
 class Schedule:
-    def __init__(self, filen):
-        self.file=file("schedule.inc", 'a+')
+    def __init__(self, filen, name):
+        if os.path.exists(os.path.abspath(name)):
+            os.remove(name)
+        self.file=file(name, 'a+')
         self.parser=Parser(filen)
 
     def writeEcl(self):
@@ -157,8 +161,8 @@ class Schedule:
         data=np.array(dm["EXPERIMENT"]).reshape(len(dm["EXPERIMENT"])/6,6)
         for i in range(len(data[:,0])):
             if float(data[:,0][i]) == 0.0:
-                self.file.write("\nDTWELL  15\n")
                 self.file.write("\nTIME  "+str(float(data[:,0][i])*60)+"\n\n")
+                self.file.write("\nDTWELL  15\n")
                 self.cmg.wellName("I", self.file)
                 pmf = self.cmg.polyMoleFrac(float(dm["POLYMERMW"][0]), float(data[:,2][i]))
                 self.cmg.injeConfig(dm["DIMENSION"], float(data[:,1][i])/60, pmf, self.file)
@@ -176,8 +180,8 @@ class Schedule:
             else:
                 self.file.write("\nEND\n\n")
 if __name__=='__main__':
-    schedule=Schedule(args.fn)
-    if args.tn == "ecl":
+    schedule=Schedule(args.filen, args.output)
+    if args.type == "ecl" or args.type == "ECL":
         schedule.writeEcl()
-    if args.tn == "cmg":
+    if args.type == "cmg" or args.type == "CMG":
         schedule.writeCmg()
