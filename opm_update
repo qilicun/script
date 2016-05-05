@@ -1,0 +1,115 @@
+#!/usr/bin/python
+
+import optparse
+import sys
+import subprocess
+import os
+import os.path
+import shutil
+import random
+import socket
+import shlex
+import commands
+
+
+cmake = "/usr/bin/cmake .."
+git   = "/usr/bin/git"
+make  = "make -j 4"
+
+def updateModule(mpath):
+    os.chdir(mpath)
+    os.system("git fetch opm")
+    os.system("git checkout remotes/opm/master")
+    os.system("git branch -D master")
+    os.system("git checkout -b master")
+
+def checkFile(source_dir, fileList):
+    OK = False
+    if os.path.isdir(source_dir):
+        for file in fileList:
+            if os.path.exists( os.path.join( source_dir , file )):
+                OK = True
+        if not OK:
+            raise Exception("Directory: %s does not seem to be the source directory of a " % source_dir)
+
+
+
+def runCMake(options):
+    checkFile(options.source_dir, ["CMakeLists.txt"])        
+    argList = [options.cmake, options.source_dir]
+    print "runCMake", options.cmake, options.source_dir
+    os.chdir(options.build_dir)
+    print "current dir: ", os.getcwd()
+    os.system(options.cmake)
+
+
+def runMake(options):
+    msg = "Compiling with: %s" % options.make
+    print msg
+    os.chdir(options.build_dir)
+    print "current dir: ", os.getcwd()
+    os.system(options.make)
+
+    
+def initBuildDir(options):
+    os.chdir(options.source_dir)
+    build = "build"
+    if os.path.exists(build):
+        try:
+            shutil.rmtree(build)
+        except Exception:
+            sys.stderr.write("** Warning: failed to wipe build directory\n" )
+
+    if not os.path.exists(build):
+        os.makedirs(build)
+    options.build_dir = os.path.join(options.source_dir, build)
+    
+    
+def cleanUp(options):
+    if options.clear_build:
+        try:
+            shutil.rmtree( options.build_dir )
+        except Exception:
+            sys.stderr.write("** Warning: failed to wipe build directory:%s\n" % options.build_dir)
+
+
+#-----------------------------------------------------------------
+
+
+parser = optparse.OptionParser()
+
+parser.add_option("--build-dir" , dest = "build_dir" , default = "build" , 
+                  help = "What is the name of the build directory. The directory will be created if it does not exist, if the directory exists it will be cleared before the configure process starts.")
+
+
+parser.add_option("--source-dir" , dest = "source_dir" , default = os.getcwd() , 
+                  help = "Where is the source located; i.e. what is the path to the directory containing the top level CMakeLists.txt file. By default the script will assume the current directory is the source directory.")
+
+
+parser.add_option("--make" , dest = "make" , default = "make -j 7"  ,
+                  help = "The command used for make [%s]" % make)
+
+parser.add_option("--cmake" , dest = "cmake" , default = cmake , 
+                  help = "The command used for cmake [%s]" % cmake)
+
+parser.add_option("--release" , dest = "release" , default = False , action="store_true")
+
+#-----------------------------------------------------------------
+
+
+def main():
+    print "Run location %s:%s" % (socket.getfqdn(), os.getcwd())
+    (options, args) = parser.parse_args()
+    opm = "/home/liuming/Work/opm"
+    modules = ["opm-common", "opm-parser", "opm-material", "opm-core", "opm-output", "opm-grid", "opm-simulators"]
+    for module in modules:
+        print "update %s" % module
+        options.source_dir= os.path.join(opm, module)
+        print "Source file: ", options.source_dir
+        updateModule(options.source_dir)
+        initBuildDir(options)
+        runCMake(options)
+        print "Build directory: ", options.build_dir
+        runMake(options)
+if __name__ == '__main__':
+    main()
